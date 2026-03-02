@@ -35,9 +35,18 @@
         .table-container::-webkit-scrollbar-thumb:hover {
             background: #94a3b8; 
         }
+        
+        /* Modal Animation */
+        .modal-enter {
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen p-4 md:p-6 lg:p-8">
+<body class="bg-slate-50 text-slate-800 min-h-screen p-4 md:p-6 lg:p-8 relative">
 
     <div class="max-w-[1400px] mx-auto space-y-6">
         
@@ -76,7 +85,11 @@
                         <div class="text-2xl xl:text-3xl font-bold text-slate-900" id="stat-count">-<span class="text-sm xl:text-lg text-slate-500 font-normal ml-1">건</span></div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                        <div class="text-slate-500 text-xs xl:text-sm font-semibold mb-1">💰 평균 거래가</div>
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="text-slate-500 text-xs xl:text-sm font-semibold">💰 평균 거래가</div>
+                            <!-- 전월 대비 변동률 뱃지 -->
+                            <div id="stat-mom" class="hidden"></div>
+                        </div>
                         <div class="text-2xl xl:text-3xl font-bold text-green-600" id="stat-avg">-<span class="text-sm xl:text-lg text-slate-500 font-normal ml-1">만원</span></div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
@@ -136,6 +149,68 @@
         </div>
     </div>
 
+    <!-- Popup Modal -->
+    <div id="detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-enter">
+            <!-- Modal Header -->
+            <div class="bg-green-600 px-6 py-4 flex justify-between items-center text-white">
+                <h3 class="font-bold text-lg flex items-center gap-2">
+                    <span>📄</span> 거래 상세 정보
+                </h3>
+                <button onclick="closeModal()" class="text-white hover:text-green-200 transition-colors focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 space-y-4">
+                <div class="border-b border-slate-100 pb-4">
+                    <div class="text-slate-500 text-sm font-semibold mb-1">아파트명</div>
+                    <div class="text-xl font-bold text-slate-900" id="modal-name">-</div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div class="text-slate-500 text-xs font-semibold mb-1">거래금액</div>
+                        <div class="text-lg font-bold text-green-600" id="modal-price">-</div>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div class="text-slate-500 text-xs font-semibold mb-1">거래일자</div>
+                        <div class="text-lg font-bold text-slate-800" id="modal-date">-</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-y-3 gap-x-4 pt-2">
+                    <div>
+                        <span class="text-slate-500 text-sm font-semibold block mb-0.5">법정동</span>
+                        <span class="text-slate-800 font-medium" id="modal-dong">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 text-sm font-semibold block mb-0.5">건축년도</span>
+                        <span class="text-slate-800 font-medium" id="modal-year">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 text-sm font-semibold block mb-0.5">전용면적</span>
+                        <span class="text-slate-800 font-medium" id="modal-area">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 text-sm font-semibold block mb-0.5">층</span>
+                        <span class="text-slate-800 font-medium" id="modal-floor">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="bg-slate-50 px-6 py-4 text-right border-t border-slate-100">
+                <button onclick="closeModal()" class="bg-white border border-slate-300 text-slate-700 px-5 py-2 rounded-lg font-semibold hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-200">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Google Sheets CSV Export URL
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSvpCB-5UAWtOxp2TYsrjVpP-UkAgKzaiNhSQ-BAV6cgV5ON8tyrOiO-lIKtsN4_t7JIYiKoFkWFsEj/pub?gid=0&single=true&output=csv';
@@ -145,6 +220,14 @@
         // Initialize App
         document.addEventListener('DOMContentLoaded', () => {
             fetchData();
+            
+            // 모달 바깥 배경 클릭 시 닫기
+            const modal = document.getElementById('detail-modal');
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
         });
 
         // Fetch and Parse CSV Data
@@ -225,7 +308,7 @@
         // Update Dashboard Components with Data
         function updateDashboard(data) {
             if (data.length === 0) {
-                updateSummary(0, 0, 0, 0);
+                updateSummary(0, 0, 0, 0, null);
                 renderChart([], []);
                 renderTop5([]);
                 renderTable([]);
@@ -238,8 +321,6 @@
             const maxPrice = Math.max(...prices);
             const minPrice = Math.min(...prices);
             const avgPrice = Math.round(prices.reduce((sum, val) => sum + val, 0) / totalCount);
-
-            updateSummary(totalCount, avgPrice, maxPrice, minPrice);
 
             // 2. Prepare Chart Data (Monthly Average)
             const monthlyStats = {};
@@ -255,9 +336,18 @@
             const labels = Object.keys(monthlyStats).sort();
             const avgPrices = labels.map(label => Math.round(monthlyStats[label].sum / monthlyStats[label].count));
 
-            renderChart(labels, avgPrices);
+            // 3. Calculate Month-over-Month (MoM) Rate
+            let momRate = null;
+            if (labels.length >= 2) {
+                const lastMonthAvg = avgPrices[avgPrices.length - 1];
+                const prevMonthAvg = avgPrices[avgPrices.length - 2];
+                if (prevMonthAvg > 0) {
+                    momRate = ((lastMonthAvg - prevMonthAvg) / prevMonthAvg) * 100;
+                }
+            }
 
-            // 3. Render Top 5 Ranking
+            updateSummary(totalCount, avgPrice, maxPrice, minPrice, momRate);
+            renderChart(labels, avgPrices);
             renderTop5(data);
 
             // 4. Populate Table (Sort by date descending, limit to 100)
@@ -271,11 +361,28 @@
         }
 
         // Update Summary Cards UI
-        function updateSummary(count, avg, max, min) {
+        function updateSummary(count, avg, max, min, momRate) {
             document.getElementById('stat-count').innerHTML = `${count.toLocaleString()}<span class="text-sm xl:text-lg text-slate-500 font-normal ml-1">건</span>`;
             document.getElementById('stat-avg').innerHTML = `${avg.toLocaleString()}<span class="text-sm xl:text-lg text-slate-500 font-normal ml-1">만원</span>`;
             document.getElementById('stat-max').innerHTML = `${max.toLocaleString()}<span class="text-sm xl:text-lg text-slate-500 font-normal ml-1">만원</span>`;
             document.getElementById('stat-min').innerHTML = `${min.toLocaleString()}<span class="text-sm xl:text-lg text-slate-500 font-normal ml-1">만원</span>`;
+
+            // 전월 대비 변동률 업데이트
+            const momEl = document.getElementById('stat-mom');
+            if (momRate !== null) {
+                if (momRate > 0) {
+                    momEl.className = 'text-[10px] xl:text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600';
+                    momEl.innerHTML = `전월비 ▲ ${Math.abs(momRate).toFixed(1)}%`;
+                } else if (momRate < 0) {
+                    momEl.className = 'text-[10px] xl:text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600';
+                    momEl.innerHTML = `전월비 ▼ ${Math.abs(momRate).toFixed(1)}%`;
+                } else {
+                    momEl.className = 'text-[10px] xl:text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500';
+                    momEl.innerHTML = `전월비 - 0.0%`;
+                }
+            } else {
+                momEl.className = 'hidden';
+            }
         }
 
         // Render Chart using Chart.js
@@ -393,14 +500,27 @@
                     : 'text-green-600 font-bold';
 
                 const div = document.createElement('div');
-                div.className = `flex items-center justify-between p-3 rounded-xl border ${rowBgClass} transition-all hover:shadow-md`;
+                div.className = `group flex items-center justify-between p-3 rounded-xl border ${rowBgClass} transition-all hover:shadow-md cursor-pointer`;
+                
+                // 랭킹 항목 클릭 시에도 모달을 띄우도록 이벤트 추가
+                div.onclick = () => openModal(row);
+
                 div.innerHTML = `
                     <div class="flex items-center gap-3">
                         <div class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${rankColorClass}">
                             ${rank}
                         </div>
-                        <div>
-                            <div class="font-bold text-slate-900 text-sm truncate max-w-[120px] lg:max-w-[100px] xl:max-w-[180px]" title="${name}">${name} <span class="text-xs text-slate-500 font-normal ml-1">${floor}층</span></div>
+                        <div class="relative" onmouseenter="checkOverflow(this)" onmouseleave="hideTooltip(this)">
+                            <div class="name-text font-bold text-slate-900 text-sm truncate max-w-[120px] lg:max-w-[100px] xl:max-w-[180px]">${name} <span class="text-xs text-slate-500 font-normal ml-1">${floor}층</span></div>
+                            
+                            <!-- 툴팁 말풍선 -->
+                            <div class="custom-tooltip absolute left-0 bottom-full mb-1 hidden z-[60]">
+                                <div class="bg-slate-800 text-white text-xs px-2 py-1.5 rounded shadow-lg whitespace-nowrap relative">
+                                    ${name} <span class="text-slate-300 ml-0.5">${floor}층</span>
+                                    <div class="absolute -bottom-1 left-3 w-2 h-2 bg-slate-800 rotate-45"></div>
+                                </div>
+                            </div>
+                            
                             <div class="text-xs text-slate-500 mt-0.5">전용 ${area}㎡</div>
                         </div>
                     </div>
@@ -424,8 +544,11 @@
 
             dataSlice.forEach(row => {
                 const tr = document.createElement('tr');
-                // 짝수 행 배경색 (줄무늬) 및 마우스 오버 시 색상 변경
-                tr.className = 'even:bg-slate-50 hover:bg-green-50 transition-colors cursor-default';
+                // 짝수 행 배경색 (줄무늬), 마우스 오버 시 색상 변경 및 클릭 커서
+                tr.className = 'even:bg-slate-50 hover:bg-green-50 transition-colors cursor-pointer';
+                
+                // 행 클릭 이벤트 리스너 추가 (모달 열기)
+                tr.onclick = () => openModal(row);
                 
                 // Formatting values securely
                 const date = escapeHTML(row['거래일자'] || '-');
@@ -434,8 +557,6 @@
                 const area = escapeHTML(row['전용면적(㎡)'] || '-');
                 const floor = escapeHTML(row['층'] || '-');
                 const price = row.parsedPrice ? row.parsedPrice.toLocaleString() : '-';
-                
-                // 가로 공간을 아끼기 위해 건축년도는 제외하거나 말줄임 처리 (여기선 2단 레이아웃을 위해 테이블 열을 약간 간소화함)
 
                 // 거래금액 5억(50,000만원) 이상 빨간색 강조
                 const priceClass = row.parsedPrice >= 50000 
@@ -444,7 +565,19 @@
 
                 tr.innerHTML = `
                     <td class="p-4 text-xs xl:text-sm text-slate-500">${date}</td>
-                    <td class="p-4 font-bold text-slate-900 text-sm xl:text-base truncate max-w-[100px] xl:max-w-[150px]" title="${name}">${name}</td>
+                    <td class="p-4">
+                        <div class="relative inline-flex max-w-full" onmouseenter="checkOverflow(this)" onmouseleave="hideTooltip(this)">
+                            <div class="name-text font-bold text-slate-900 text-sm xl:text-base truncate max-w-[100px] xl:max-w-[150px]">${name}</div>
+                            
+                            <!-- 툴팁 말풍선 -->
+                            <div class="custom-tooltip absolute left-0 bottom-full mb-1 hidden z-[60]">
+                                <div class="bg-slate-800 text-white text-xs px-2 py-1.5 rounded shadow-lg whitespace-nowrap relative">
+                                    ${name}
+                                    <div class="absolute -bottom-1 left-4 w-2 h-2 bg-slate-800 rotate-45"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
                     <td class="p-4 text-xs xl:text-sm">${dong}</td>
                     <td class="p-4 text-xs xl:text-sm">${area}</td>
                     <td class="p-4 text-xs xl:text-sm">${floor}</td>
@@ -452,6 +585,45 @@
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        // Modal Control Functions
+        function openModal(row) {
+            document.getElementById('modal-name').innerText = escapeHTML(row['아파트명'] || '-');
+            document.getElementById('modal-price').innerText = row.parsedPrice ? row.parsedPrice.toLocaleString() + ' 만원' : '-';
+            document.getElementById('modal-date').innerText = escapeHTML(row['거래일자'] || '-');
+            document.getElementById('modal-dong').innerText = escapeHTML(row['법정동'] || '-');
+            document.getElementById('modal-year').innerText = escapeHTML(row['건축년도'] || '-') + '년';
+            document.getElementById('modal-area').innerText = escapeHTML(row['전용면적(㎡)'] || '-') + ' ㎡';
+            document.getElementById('modal-floor').innerText = escapeHTML(row['층'] || '-') + '층';
+            
+            const modal = document.getElementById('detail-modal');
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('detail-modal');
+            modal.classList.add('hidden');
+        }
+
+        // 툴팁 표시 조건 확인 함수 (글자가 잘렸을 때만 표시)
+        function checkOverflow(container) {
+            const textEl = container.querySelector('.name-text');
+            const tooltip = container.querySelector('.custom-tooltip');
+            if (textEl && tooltip) {
+                // scrollWidth가 clientWidth보다 크면 텍스트가 잘린 상태
+                if (textEl.scrollWidth > textEl.clientWidth) {
+                    tooltip.classList.remove('hidden');
+                }
+            }
+        }
+
+        // 툴팁 숨기기 함수
+        function hideTooltip(container) {
+            const tooltip = container.querySelector('.custom-tooltip');
+            if (tooltip) {
+                tooltip.classList.add('hidden');
+            }
         }
 
         // Helper function to escape HTML to prevent XSS
