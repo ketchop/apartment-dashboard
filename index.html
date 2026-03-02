@@ -92,7 +92,7 @@
             <div class="table-container overflow-x-auto">
                 <table class="w-full text-left border-collapse whitespace-nowrap">
                     <thead>
-                        <tr class="bg-slate-50 text-slate-600 text-sm border-b border-slate-200">
+                        <tr class="bg-slate-100 text-slate-600 text-sm border-b border-slate-200">
                             <th class="p-4 font-semibold">거래일자</th>
                             <th class="p-4 font-semibold">아파트명</th>
                             <th class="p-4 font-semibold">법정동</th>
@@ -289,7 +289,8 @@
 
             dataSlice.forEach(row => {
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50 transition-colors';
+                // 짝수 행 배경색 (줄무늬) 및 마우스 오버 시 색상 변경
+                tr.className = 'even:bg-slate-50 hover:bg-green-50 transition-colors cursor-default';
                 
                 // Formatting values securely
                 const date = escapeHTML(row['거래일자'] || '-');
@@ -300,13 +301,18 @@
                 const price = row.parsedPrice ? row.parsedPrice.toLocaleString() : '-';
                 const year = escapeHTML(row['건축년도'] || '-');
 
+                // 거래금액 5억(50,000만원) 이상 빨간색 강조
+                const priceClass = row.parsedPrice >= 50000 
+                    ? 'text-red-500 font-extrabold' 
+                    : 'text-green-600 font-bold';
+
                 tr.innerHTML = `
                     <td class="p-4">${date}</td>
                     <td class="p-4 font-bold text-slate-900">${name}</td>
                     <td class="p-4">${dong}</td>
                     <td class="p-4">${area}</td>
                     <td class="p-4">${floor}</td>
-                    <td class="p-4 text-right font-bold text-green-600">${price}</td>
+                    <td class="p-4 text-right ${priceClass}">${price}</td>
                     <td class="p-4 text-slate-500">${year}</td>
                 `;
                 tbody.appendChild(tr);
