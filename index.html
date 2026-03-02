@@ -41,17 +41,24 @@
     <div class="max-w-7xl mx-auto space-y-6">
         
         <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-            <div>
+        <header class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
+            <div class="w-full md:w-auto">
                 <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">🏢 우리 동네 아파트 실거래가 대시보드</h1>
                 <p class="text-slate-500 mt-2 text-sm">구글 시트 실시간 연동 데이터</p>
             </div>
-            <div id="loading-indicator" class="mt-4 md:mt-0 flex items-center text-green-600 font-medium bg-green-50 px-4 py-2 rounded-full">
-                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                데이터 불러오는 중...
+            <div class="flex items-center gap-4 w-full md:w-auto justify-end">
+                <!-- 법정동 필터 드롭다운 -->
+                <select id="dong-filter" class="hidden bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-2.5 font-semibold shadow-sm outline-none cursor-pointer w-full md:w-48 transition-colors hover:border-green-400">
+                    <option value="all">📍 전체 동네</option>
+                </select>
+
+                <div id="loading-indicator" class="flex items-center text-green-600 font-medium bg-green-50 px-4 py-2 rounded-full whitespace-nowrap">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    불러오는 중...
+                </div>
             </div>
         </header>
 
@@ -75,11 +82,22 @@
             </div>
         </div>
 
-        <!-- Chart Section -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-            <h2 class="text-lg font-bold text-slate-800 mb-4">📈 월별 평균 거래가격 추이</h2>
-            <div class="relative h-72 md:h-96 w-full">
-                <canvas id="monthlyChart"></canvas>
+        <!-- Chart and Ranking Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+            <!-- Chart Section -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2">
+                <h2 class="text-lg font-bold text-slate-800 mb-4">📈 월별 평균 거래가격 추이</h2>
+                <div class="relative h-72 md:h-96 w-full">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top 5 Ranking Section -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                <h2 class="text-lg font-bold text-slate-800 mb-4">🏆 우리 동네 비싼 아파트 TOP 5</h2>
+                <div id="top-5-list" class="space-y-3 flex-grow overflow-y-auto pr-1">
+                    <!-- Top 5 items will be inserted here dynamically -->
+                </div>
             </div>
         </div>
 
@@ -115,6 +133,8 @@
         // Google Sheets CSV Export URL
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSvpCB-5UAWtOxp2TYsrjVpP-UkAgKzaiNhSQ-BAV6cgV5ON8tyrOiO-lIKtsN4_t7JIYiKoFkWFsEj/pub?gid=0&single=true&output=csv';
 
+        let globalValidData = []; // 전체 데이터를 저장할 변수
+
         // Initialize App
         document.addEventListener('DOMContentLoaded', () => {
             fetchData();
@@ -127,8 +147,7 @@
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
-                    const data = results.data;
-                    processData(data);
+                    processInitialData(results.data);
                 },
                 error: function(error) {
                     console.error('Error fetching data:', error);
@@ -137,17 +156,16 @@
             });
         }
 
-        // Process Data and Update UI
-        function processData(rawData) {
+        // Process Initial Data and Setup Filter
+        function processInitialData(rawData) {
             // 1. Data Cleaning & Parsing
-            const validData = rawData.filter(row => row['거래금액(만원)'] && row['거래일자']).map(row => {
+            globalValidData = rawData.filter(row => row['거래금액(만원)'] && row['거래일자']).map(row => {
                 // Parse Price (Remove commas if any)
                 const priceStr = String(row['거래금액(만원)']).replace(/,/g, '').trim();
                 const price = parseInt(priceStr, 10) || 0;
                 
                 // Parse Date to extract Month (YYYY-MM format)
-                // Assuming date might be in YYYYMMDD, YYYY-MM-DD, or YYYY.MM.DD format
-                const dateStr = String(row['거래일자']).replace(/\D/g, ''); // leave only numbers
+                const dateStr = String(row['거래일자']).replace(/\D/g, ''); 
                 let monthLabel = '기타';
                 if (dateStr.length >= 6) {
                     monthLabel = `${dateStr.substring(0,4)}-${dateStr.substring(4,6)}`;
@@ -161,7 +179,7 @@
                 };
             });
 
-            if (validData.length === 0) {
+            if (globalValidData.length === 0) {
                 document.getElementById('loading-indicator').innerText = '유효한 데이터가 없습니다.';
                 return;
             }
@@ -169,22 +187,55 @@
             // Hide loading indicator
             document.getElementById('loading-indicator').style.display = 'none';
 
-            // 2. Calculate Summary Statistics
-            const prices = validData.map(d => d.parsedPrice);
-            const totalCount = validData.length;
+            // 2. Setup Dropdown Filter
+            const dongs = [...new Set(globalValidData.map(d => d['법정동']).filter(Boolean))].sort();
+            const filterSelect = document.getElementById('dong-filter');
+            
+            dongs.forEach(dong => {
+                const option = document.createElement('option');
+                option.value = dong;
+                option.textContent = dong;
+                filterSelect.appendChild(option);
+            });
+
+            filterSelect.classList.remove('hidden'); // Show filter
+
+            // Add Event Listener for Filter
+            filterSelect.addEventListener('change', (e) => {
+                const selectedDong = e.target.value;
+                if (selectedDong === 'all') {
+                    updateDashboard(globalValidData);
+                } else {
+                    const filteredData = globalValidData.filter(d => d['법정동'] === selectedDong);
+                    updateDashboard(filteredData);
+                }
+            });
+
+            // 3. Initial Dashboard Render
+            updateDashboard(globalValidData);
+        }
+
+        // Update Dashboard Components with Data
+        function updateDashboard(data) {
+            if (data.length === 0) {
+                updateSummary(0, 0, 0, 0);
+                renderChart([], []);
+                renderTable([]);
+                return;
+            }
+
+            // 1. Calculate Summary Statistics
+            const prices = data.map(d => d.parsedPrice);
+            const totalCount = data.length;
             const maxPrice = Math.max(...prices);
             const minPrice = Math.min(...prices);
             const avgPrice = Math.round(prices.reduce((sum, val) => sum + val, 0) / totalCount);
 
-            // Update DOM
-            document.getElementById('stat-count').innerHTML = `${totalCount.toLocaleString()}<span class="text-lg text-slate-500 font-normal ml-1">건</span>`;
-            document.getElementById('stat-avg').innerHTML = `${avgPrice.toLocaleString()}<span class="text-lg text-slate-500 font-normal ml-1">만원</span>`;
-            document.getElementById('stat-max').innerHTML = `${maxPrice.toLocaleString()}<span class="text-lg text-slate-500 font-normal ml-1">만원</span>`;
-            document.getElementById('stat-min').innerHTML = `${minPrice.toLocaleString()}<span class="text-lg text-slate-500 font-normal ml-1">만원</span>`;
+            updateSummary(totalCount, avgPrice, maxPrice, minPrice);
 
-            // 3. Prepare Chart Data (Monthly Average)
+            // 2. Prepare Chart Data (Monthly Average)
             const monthlyStats = {};
-            validData.forEach(d => {
+            data.forEach(d => {
                 if (!monthlyStats[d.monthLabel]) {
                     monthlyStats[d.monthLabel] = { sum: 0, count: 0 };
                 }
@@ -198,14 +249,25 @@
 
             renderChart(labels, avgPrices);
 
+            // 3. Render Top 5 Ranking
+            renderTop5(data);
+
             // 4. Populate Table (Sort by date descending, limit to 100)
-            const sortedData = [...validData].sort((a, b) => {
+            const sortedData = [...data].sort((a, b) => {
                 const dateA = a.originalDateStr.replace(/\D/g, '');
                 const dateB = b.originalDateStr.replace(/\D/g, '');
                 return dateB.localeCompare(dateA);
             });
 
             renderTable(sortedData.slice(0, 100));
+        }
+
+        // Update Summary Cards UI
+        function updateSummary(count, avg, max, min) {
+            document.getElementById('stat-count').innerHTML = `${count.toLocaleString()}<span class="text-lg text-slate-500 font-normal ml-1">건</span>`;
+            document.getElementById('stat-avg').innerHTML = `${avg.toLocaleString()}<span class="text-lg text-slate-500 font-normal ml-1">만원</span>`;
+            document.getElementById('stat-max').innerHTML = `${max.toLocaleString()}<span class="text-lg text-slate-500 font-normal ml-1">만원</span>`;
+            document.getElementById('stat-min').innerHTML = `${min.toLocaleString()}<span class="text-lg text-slate-500 font-normal ml-1">만원</span>`;
         }
 
         // Render Chart using Chart.js
@@ -282,10 +344,75 @@
             });
         }
 
+        // Render Top 5 Ranking
+        function renderTop5(data) {
+            const container = document.getElementById('top-5-list');
+            container.innerHTML = '';
+
+            if (data.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-500 py-8">해당 조건의 거래 내역이 없습니다.</div>';
+                return;
+            }
+
+            // Sort descending by price and get top 5
+            const sortedDesc = [...data].sort((a, b) => b.parsedPrice - a.parsedPrice);
+            const top5 = sortedDesc.slice(0, 5);
+
+            top5.forEach((row, index) => {
+                const rank = index + 1;
+                let rankColorClass = 'bg-slate-100 text-slate-500'; // 4위, 5위 기본 색상
+                let rowBgClass = 'bg-white border-slate-100';
+                
+                // 금, 은, 동 강조
+                if (rank === 1) {
+                    rankColorClass = 'bg-[#FFD700] text-yellow-900 ring-2 ring-yellow-200 shadow-sm';
+                    rowBgClass = 'bg-yellow-50/30 border-yellow-200';
+                } else if (rank === 2) {
+                    rankColorClass = 'bg-[#C0C0C0] text-slate-800 ring-2 ring-slate-200 shadow-sm';
+                    rowBgClass = 'bg-slate-50 border-slate-200';
+                } else if (rank === 3) {
+                    rankColorClass = 'bg-[#CD7F32] text-orange-900 ring-2 ring-orange-200 shadow-sm';
+                    rowBgClass = 'bg-orange-50/30 border-orange-200';
+                }
+
+                const name = escapeHTML(row['아파트명'] || '-');
+                const area = escapeHTML(row['전용면적(㎡)'] || '-');
+                const floor = escapeHTML(row['층'] || '-');
+                const price = row.parsedPrice ? row.parsedPrice.toLocaleString() : '-';
+
+                const priceClass = row.parsedPrice >= 50000 
+                    ? 'text-red-500 font-extrabold' 
+                    : 'text-green-600 font-bold';
+
+                const div = document.createElement('div');
+                div.className = `flex items-center justify-between p-3 rounded-xl border ${rowBgClass} transition-all hover:shadow-md`;
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${rankColorClass}">
+                            ${rank}
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900 text-sm truncate max-w-[120px] sm:max-w-[150px] md:max-w-xs" title="${name}">${name} <span class="text-xs text-slate-500 font-normal ml-1">${floor}층</span></div>
+                            <div class="text-xs text-slate-500 mt-0.5">전용 ${area}㎡</div>
+                        </div>
+                    </div>
+                    <div class="text-right ${priceClass}">
+                        ${price}<span class="text-xs font-normal text-slate-500 ml-0.5">만원</span>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
         // Render Data Table
         function renderTable(dataSlice) {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = ''; // Clear existing
+
+            if (dataSlice.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-500">해당 조건의 거래 내역이 없습니다.</td></tr>`;
+                return;
+            }
 
             dataSlice.forEach(row => {
                 const tr = document.createElement('tr');
