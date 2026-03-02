@@ -46,8 +46,8 @@
                 <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">🏢 우리 동네 아파트 실거래가 대시보드</h1>
                 <p class="text-slate-500 mt-2 text-sm">구글 시트 실시간 연동 데이터</p>
             </div>
-            <div id="loading-indicator" class="mt-4 md:mt-0 flex items-center text-blue-600 font-medium bg-blue-50 px-4 py-2 rounded-full">
-                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <div id="loading-indicator" class="mt-4 md:mt-0 flex items-center text-green-600 font-medium bg-green-50 px-4 py-2 rounded-full">
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -63,7 +63,7 @@
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div class="text-slate-500 text-sm font-semibold mb-1">평균 거래가</div>
-                <div class="text-3xl font-bold text-blue-600" id="stat-avg">-<span class="text-lg text-slate-500 font-normal ml-1">만원</span></div>
+                <div class="text-3xl font-bold text-green-600" id="stat-avg">-<span class="text-lg text-slate-500 font-normal ml-1">만원</span></div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div class="text-slate-500 text-sm font-semibold mb-1">최고 거래가</div>
@@ -71,7 +71,7 @@
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div class="text-slate-500 text-sm font-semibold mb-1">최저 거래가</div>
-                <div class="text-3xl font-bold text-green-500" id="stat-min">-<span class="text-lg text-slate-500 font-normal ml-1">만원</span></div>
+                <div class="text-3xl font-bold text-blue-500" id="stat-min">-<span class="text-lg text-slate-500 font-normal ml-1">만원</span></div>
             </div>
         </div>
 
@@ -225,11 +225,11 @@
                     datasets: [{
                         label: '평균 거래가격 (만원)',
                         data: data,
-                        borderColor: '#2563eb', // text-blue-600
-                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        borderColor: '#16a34a', // text-green-600
+                        backgroundColor: 'rgba(22, 163, 74, 0.1)',
                         borderWidth: 2,
                         pointBackgroundColor: '#ffffff',
-                        pointBorderColor: '#2563eb',
+                        pointBorderColor: '#16a34a',
                         pointBorderWidth: 2,
                         pointRadius: 4,
                         pointHoverRadius: 6,
@@ -306,7 +306,7 @@
                     <td class="p-4">${dong}</td>
                     <td class="p-4">${area}</td>
                     <td class="p-4">${floor}</td>
-                    <td class="p-4 text-right font-bold text-blue-600">${price}</td>
+                    <td class="p-4 text-right font-bold text-green-600">${price}</td>
                     <td class="p-4 text-slate-500">${year}</td>
                 `;
                 tbody.appendChild(tr);
